@@ -1,0 +1,41 @@
+let
+    // 1) Carrega o CSV como texto UTF-8
+    FonteBinaria = File.Contents("C:\\Users\\Welington Junio\\Downloads\\TESTE - DADOS OPERAC TURB VAPOR .csv"),
+    Texto        = Text.FromBinary(FonteBinaria, TextEncoding.Utf8),
+
+    // 2) Separa em linhas e remove possíveis vazias
+    Linhas       = List.Select(Text.Split(Text.TrimEnd(Texto), "#(lf)"), each _ <> ""),
+
+    // 3) Pega os 3 cabeçalhos e o restante são dados
+    Head1        = Linhas{0},
+    Head2        = Linhas{1},
+    Head3        = Linhas{2},
+    DataLinhas   = List.Skip(Linhas, 3),
+
+    // 4) Quebra cada cabeçalho em um array de colunas
+    Col1         = Text.Split(Head1, ";"),
+    Col2         = Text.Split(Head2, ";"),
+    Col3         = Text.Split(Head3, ";"),
+
+    // 5) Monta a tabela bruta a partir dos dados
+    RawTable     = Table.FromRows(
+                      List.Transform(DataLinhas, each Text.Split(_, ";")),
+                      List.Transform({1..List.Count(Col1)}, each "Column" & Text.From(_))
+                   ),
+
+    // 6) Cria a lista de novos nomes: o primeiro sempre "Date", os demais "código: descrição (unidade)"
+    NewNamesList = List.Transform(
+                      {0..List.Count(Col1)-1},
+                      (i) => if i = 0 
+                             then "Date" 
+                             else Col1{i} & ": " & Col2{i} & " (" & Col3{i} & ")"
+                   ),
+
+    // 7) Zip antigos e novos e renomeia tudo de uma vez
+    OrigNames    = Table.ColumnNames(RawTable),
+    Mappings     = List.Zip({OrigNames, NewNamesList}),
+    Renomeado    = Table.RenameColumns(RawTable, Mappings, MissingField.Ignore),
+    #"Valor Substituído" = Table.ReplaceValue(Renomeado,".",",",Replacer.ReplaceText,{"""""BLS1P_A"""": """"BLEED STEAM A1 - PRESSURE (PROTECION MEASUREMENT A) - Actual Value"""" (""""Bar(a)"""")", """""BLS1P_B"""": """"BLEED STEAM A1 - PRESSURE (PROTECION MEASUREMENT B) - Actual Value"""" (""""Bar(a)"""")", """""BLS1T"""": """"BLEED STEAM A1 - TEMPERATURE - Actual Value"""" (""""ºC"""")", """""BSP_A"""": """"EXHAUST STEAM - PRESSURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""Bar(g)"""")", """""BSP_B"""": """"EXHAUST STEAM - PRESSURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""Bar(g)"""")", """""BST_A"""": """"EXHAUST STEAM - TEMPERATURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""ºC"""")", """""BST_B"""": """"EXHAUST STEAM - TEMPERATURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""ºC"""")", """""ES1P_A"""": """"EXTRACTION STEAM E1 - PRESSURE (PROTECION MEASUREMENT A) - Actual Value"""" (""""Bar(a)"""")", """""ES1P_B"""": """"EXTRACTION STEAM E1 - PRESSURE (PROTECION MEASUREMENT B) - Actual Value"""" (""""Bar(a)"""")", """""ES1P_CV1_P"""": """"TURBINE EXTRACTION E1 - EXTRACTION CONTROL VALVE - ELECTRIC-HYD CONVERTER - CTRL OIL PRES (P3) - Actual Value"""" (""""Bar(a)"""")", """""ES1P_NRF"""": """"EXTRACTION STEAM E1 - PRESSURE AFTER NON RETURN VALVE (CONTROL MEASUREMENT) - Actual Value"""" (""""Bar(a)"""")", """""ES1T"""": """"EXTRACTION STEAM E1 - TEMPERATURE - Actual Value"""" (""""ºC"""")", """""ESP_CV1_POS"""": """"ATLAS II - ACTUATOR LP (EXTRACTION) - Modbus signal"""" (""""%"""")", """""G_AP"""": """"GENERATOR POWER (MW) - Actual Value"""" (""""MW"""")", """""LSP"""": """"ADMISSION STEAM - PRESSURE - Actual Value"""" (""""Bar(g)"""")", """""LSP_CV1_P"""": """"TURBINE ADMISSION - STEAM CONTROL VALVE - ELECTRIC-HYD CONVERTER - CTRL OIL PRES (P3) - Actual Value"""" (""""Bar(g)"""")", """""LSP_CV1_POS"""": """"ATLAS II - ACTUATOR HP (ADMISSION) - Modbus signal"""" (""""%"""")", """""LSP_ESV1_CL"""": """"ESV Closed Indication"""" (""""Bin"""")", """""LST_A"""": """"ADMISSION STEAM - TEMPERATURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""ºC"""")", """""LST_B"""": """"ADMISSION STEAM - TEMPERATURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""ºC"""")", """""SPEED_AV"""": """"ATLAS II - INTERNAL ACTUAL SPEED - Actual Value"""" (""""RPM"""")", """""WCP_HP_A"""": """"WHEEL CHAMBER STEAM - PRESSURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""Bar(g)"""")", """""WCP_HP_B""""""#(cr): """"WHEEL CHAMBER STEAM - PRESSURE (PROTECTION MEASUREMENT B) - Actual Value""""""#(cr) (""""Bar(g)""""""#(cr))"}),
+    #"Tipo Alterado" = Table.TransformColumnTypes(#"Valor Substituído",{{"Date", type datetime}, {"""""BLS1P_A"""": """"BLEED STEAM A1 - PRESSURE (PROTECION MEASUREMENT A) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""BLS1P_B"""": """"BLEED STEAM A1 - PRESSURE (PROTECION MEASUREMENT B) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""BLS1T"""": """"BLEED STEAM A1 - TEMPERATURE - Actual Value"""" (""""ºC"""")", type number}, {"""""BSP_A"""": """"EXHAUST STEAM - PRESSURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""Bar(g)"""")", type number}, {"""""BSP_B"""": """"EXHAUST STEAM - PRESSURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""Bar(g)"""")", type number}, {"""""BST_A"""": """"EXHAUST STEAM - TEMPERATURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""ºC"""")", type number}, {"""""BST_B"""": """"EXHAUST STEAM - TEMPERATURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""ºC"""")", type number}, {"""""ES1P_A"""": """"EXTRACTION STEAM E1 - PRESSURE (PROTECION MEASUREMENT A) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""ES1P_B"""": """"EXTRACTION STEAM E1 - PRESSURE (PROTECION MEASUREMENT B) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""ES1P_CV1_P"""": """"TURBINE EXTRACTION E1 - EXTRACTION CONTROL VALVE - ELECTRIC-HYD CONVERTER - CTRL OIL PRES (P3) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""ES1P_NRF"""": """"EXTRACTION STEAM E1 - PRESSURE AFTER NON RETURN VALVE (CONTROL MEASUREMENT) - Actual Value"""" (""""Bar(a)"""")", type number}, {"""""ES1T"""": """"EXTRACTION STEAM E1 - TEMPERATURE - Actual Value"""" (""""ºC"""")", type number}, {"""""ESP_CV1_POS"""": """"ATLAS II - ACTUATOR LP (EXTRACTION) - Modbus signal"""" (""""%"""")", type number}, {"""""G_AP"""": """"GENERATOR POWER (MW) - Actual Value"""" (""""MW"""")", type number}, {"""""LSP"""": """"ADMISSION STEAM - PRESSURE - Actual Value"""" (""""Bar(g)"""")", type number}, {"""""LSP_CV1_P"""": """"TURBINE ADMISSION - STEAM CONTROL VALVE - ELECTRIC-HYD CONVERTER - CTRL OIL PRES (P3) - Actual Value"""" (""""Bar(g)"""")", type number}, {"""""LSP_CV1_POS"""": """"ATLAS II - ACTUATOR HP (ADMISSION) - Modbus signal"""" (""""%"""")", type number}, {"""""LSP_ESV1_CL"""": """"ESV Closed Indication"""" (""""Bin"""")", type number}, {"""""LST_A"""": """"ADMISSION STEAM - TEMPERATURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""ºC"""")", type number}, {"""""LST_B"""": """"ADMISSION STEAM - TEMPERATURE (PROTECTION MEASUREMENT B) - Actual Value"""" (""""ºC"""")", type number}, {"""""SPEED_AV"""": """"ATLAS II - INTERNAL ACTUAL SPEED - Actual Value"""" (""""RPM"""")", type number}, {"""""WCP_HP_A"""": """"WHEEL CHAMBER STEAM - PRESSURE (PROTECTION MEASUREMENT A) - Actual Value"""" (""""Bar(g)"""")", type number}, {"""""WCP_HP_B""""""#(cr): """"WHEEL CHAMBER STEAM - PRESSURE (PROTECTION MEASUREMENT B) - Actual Value""""""#(cr) (""""Bar(g)""""""#(cr))", type number}})
+in
+    #"Tipo Alterado"
